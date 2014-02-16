@@ -463,7 +463,7 @@ unsigned int suhosin_input_filter(int arg, char *var, char **val, unsigned int v
 					return 0;
 				}
 			}
-			if (SUHOSIN_G(max_get_totalname_length) && SUHOSIN_G(max_get_totalname_length) < var_len) {
+			if (SUHOSIN_G(max_get_totalname_length) && SUHOSIN_G(max_get_totalname_length) < total_len) {
 				suhosin_log(S_VARS, "configured GET variable total name length limit exceeded - dropped variable '%s'", var);
 				if (!SUHOSIN_G(simulation)) {
 					return 0;
@@ -477,7 +477,7 @@ unsigned int suhosin_input_filter(int arg, char *var, char **val, unsigned int v
 					return 0;
 				}
 			}
-			if (SUHOSIN_G(max_cookie_totalname_length) && SUHOSIN_G(max_cookie_totalname_length) < var_len) {
+			if (SUHOSIN_G(max_cookie_totalname_length) && SUHOSIN_G(max_cookie_totalname_length) < total_len) {
 				suhosin_log(S_VARS, "configured COOKIE variable total name length limit exceeded - dropped variable '%s'", var);
 				if (!SUHOSIN_G(simulation)) {
 					return 0;
@@ -491,7 +491,7 @@ unsigned int suhosin_input_filter(int arg, char *var, char **val, unsigned int v
 					return 0;
 				}
 			}
-			if (SUHOSIN_G(max_post_totalname_length) && SUHOSIN_G(max_post_totalname_length) < var_len) {
+			if (SUHOSIN_G(max_post_totalname_length) && SUHOSIN_G(max_post_totalname_length) < total_len) {
 				suhosin_log(S_VARS, "configured POST variable total name length limit exceeded - dropped variable '%s'", var);
 				if (!SUHOSIN_G(simulation)) {
 					return 0;
@@ -502,49 +502,56 @@ unsigned int suhosin_input_filter(int arg, char *var, char **val, unsigned int v
 	
 	/* Find out array depth */
 	while (index) {
+		char *index_end;
 		unsigned int index_length;
 		
-		depth++;
-		index = strchr(index+1, '[');
+		/* overjump '[' */
+		index++;
 		
-		if (prev_index) {
-			index_length = index ? index - 1 - prev_index - 1: strlen(prev_index);
-			
-			if (SUHOSIN_G(max_array_index_length) && SUHOSIN_G(max_array_index_length) < index_length) {
-				suhosin_log(S_VARS, "configured request variable array index length limit exceeded - dropped variable '%s'", var);
-				if (!SUHOSIN_G(simulation)) {
-					return 0;
-				}
-			} 
-			switch (arg) {
-			    case PARSE_GET:
-					if (SUHOSIN_G(max_get_array_index_length) && SUHOSIN_G(max_get_array_index_length) < index_length) {
-						suhosin_log(S_VARS, "configured GET variable array index length limit exceeded - dropped variable '%s'", var);
-						if (!SUHOSIN_G(simulation)) {
-							return 0;
-						}
-					} 
-					break;
-			    case PARSE_COOKIE:
-					if (SUHOSIN_G(max_cookie_array_index_length) && SUHOSIN_G(max_cookie_array_index_length) < index_length) {
-						suhosin_log(S_VARS, "configured COOKIE variable array index length limit exceeded - dropped variable '%s'", var);
-						if (!SUHOSIN_G(simulation)) {
-							return 0;
-						}
-					} 
-					break;
-			    case PARSE_POST:
-					if (SUHOSIN_G(max_post_array_index_length) && SUHOSIN_G(max_post_array_index_length) < index_length) {
-						suhosin_log(S_VARS, "configured POST variable array index length limit exceeded - dropped variable '%s'", var);
-						if (!SUHOSIN_G(simulation)) {
-							return 0;
-						}
-					} 
-					break;
-			}
-			prev_index = index;
+		/* increase array depth */
+		depth++;
+				
+		index_end = strchr(index, ']');
+		if (index_end == NULL) {
+			index_end = index+strlen(index);
 		}
 		
+		index_length = index_end - index;
+			
+		if (SUHOSIN_G(max_array_index_length) && SUHOSIN_G(max_array_index_length) < index_length) {
+			suhosin_log(S_VARS, "configured request variable array index length limit exceeded - dropped variable '%s'", var);
+			if (!SUHOSIN_G(simulation)) {
+				return 0;
+			}
+		} 
+		switch (arg) {
+		    case PARSE_GET:
+				if (SUHOSIN_G(max_get_array_index_length) && SUHOSIN_G(max_get_array_index_length) < index_length) {
+					suhosin_log(S_VARS, "configured GET variable array index length limit exceeded - dropped variable '%s'", var);
+					if (!SUHOSIN_G(simulation)) {
+						return 0;
+					}
+				} 
+				break;
+		    case PARSE_COOKIE:
+				if (SUHOSIN_G(max_cookie_array_index_length) && SUHOSIN_G(max_cookie_array_index_length) < index_length) {
+					suhosin_log(S_VARS, "configured COOKIE variable array index length limit exceeded - dropped variable '%s'", var);
+					if (!SUHOSIN_G(simulation)) {
+						return 0;
+					}
+				} 
+				break;
+		    case PARSE_POST:
+				if (SUHOSIN_G(max_post_array_index_length) && SUHOSIN_G(max_post_array_index_length) < index_length) {
+					suhosin_log(S_VARS, "configured POST variable array index length limit exceeded - dropped variable '%s'", var);
+					if (!SUHOSIN_G(simulation)) {
+						return 0;
+					}
+				} 
+				break;
+		}
+		
+		index = strchr(index, '[');
 	}
 	
 	/* Drop this variable if it exceeds the array depth limit */
